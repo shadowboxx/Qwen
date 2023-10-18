@@ -35,14 +35,14 @@ torchrun $DISTRIBUTED_ARGS finetune.py \
     --save_strategy "steps" \
     --save_steps 1000 \
     --save_total_limit 10 \
-    --learning_rate 1e-5 \
+    --learning_rate 3e-4 \
     --weight_decay 0.1 \
     --adam_beta2 0.95 \
     --warmup_ratio 0.01 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --report_to "none" \
-    --model_max_length 2048 \
+    --model_max_length 512 \
     --lazy_preprocess True \
     --use_lora \
     --q_lora \

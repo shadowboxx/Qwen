@@ -16,7 +16,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
 from transformers.trainer_utils import set_seed
 
-DEFAULT_CKPT_PATH = '/mnt/d/LLM/models/Qwen-7B-Chat-Int4'
+from peft import PeftModel, AutoPeftModelForCausalLM  # 微调模型模块
+
+DEFAULT_BASE_MODEL_PATH = '/mnt/d/LLM/models/Qwen-14B-Chat-Int4'
 
 _WELCOME_MSG = '''\
 Welcome to use Qwen-Chat model, type text to start chat, type :h to show command help.
@@ -43,7 +45,9 @@ Commands:
 
 def _load_model_tokenizer(args):
     tokenizer = AutoTokenizer.from_pretrained(
-        args.checkpoint_path, trust_remote_code=True, resume_download=True,
+        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+        trust_remote_code=True, 
+        resume_download=True,
     )
 
     if args.cpu_only:
@@ -51,15 +55,25 @@ def _load_model_tokenizer(args):
     else:
         device_map = "auto"
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.checkpoint_path,
-        device_map=device_map,
-        trust_remote_code=True,
-        resume_download=True,
-    ).eval()
+    if args.checkpoint_path : 
+        model = AutoPeftModelForCausalLM.from_pretrained(
+            args.checkpoint_path, # path to the output directory
+            device_map=device_map,
+            trust_remote_code=True
+        ).eval()
+
+    else :
+        model = AutoModelForCausalLM.from_pretrained(
+            DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+            device_map=device_map,
+            trust_remote_code=True,
+            resume_download=True,
+        ).eval()
 
     config = GenerationConfig.from_pretrained(
-        args.checkpoint_path, trust_remote_code=True, resume_download=True,
+        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+        trust_remote_code=True,
+         resume_download=True,
     )
 
     return model, tokenizer, config
@@ -105,7 +119,7 @@ def _get_input() -> str:
 def main():
     parser = argparse.ArgumentParser(
         description='QWen-Chat command-line interactive chat demo.')
-    parser.add_argument("-c", "--checkpoint-path", type=str, default=DEFAULT_CKPT_PATH,
+    parser.add_argument("-c", "--checkpoint-path", type=str, # default=DEFAULT_PEFT_CKPT_PATH,
                         help="Checkpoint name or path, default to %(default)r")
     parser.add_argument("-s", "--seed", type=int, default=1234, help="Random seed")
     parser.add_argument("--cpu-only", action="store_true", help="Run demo with CPU only")

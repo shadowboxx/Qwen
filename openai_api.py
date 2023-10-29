@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers.generation import GenerationConfig
-
+from peft import AutoPeftModelForCausalLM  # 微调模型模块
 
 def _gc(forced: bool = False):
     global args
@@ -473,7 +473,7 @@ def _get_args():
         "-c",
         "--checkpoint-path",
         type=str,
-        default="Qwen/Qwen-7B-Chat",
+        # default="/mnt/d/LLM/models/Qwen-14B-Chat-Int4",
         help="Checkpoint name or path, default to %(default)r",
     )
     parser.add_argument(
@@ -485,7 +485,7 @@ def _get_args():
     parser.add_argument(
         "--server-name",
         type=str,
-        default="127.0.0.1",
+        default="0.0.0.0",
         help="Demo server name. Default: 127.0.0.1, which is only visible from the local computer."
         " If you want other computers to access your server, use 0.0.0.0 instead.",
     )
@@ -496,11 +496,13 @@ def _get_args():
     return args
 
 
+DEFAULT_BASE_MODEL_PATH = "/mnt/d/LLM/models/Qwen-14B-Chat-Int4"
+
 if __name__ == "__main__":
     args = _get_args()
 
     tokenizer = AutoTokenizer.from_pretrained(
-        args.checkpoint_path,
+        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
         trust_remote_code=True,
         resume_download=True,
     )
@@ -510,15 +512,24 @@ if __name__ == "__main__":
     else:
         device_map = "auto"
 
-    model = AutoModelForCausalLM.from_pretrained(
-        args.checkpoint_path,
-        device_map=device_map,
-        trust_remote_code=True,
-        resume_download=True,
-    ).eval()
+    # 加载微调模型
+    if args.checkpoint_path : 
+        model = AutoPeftModelForCausalLM.from_pretrained(
+            args.checkpoint_path, # path to the output directory
+            device_map=device_map,
+            trust_remote_code=True
+        ).eval()
+    # 加载基础模型
+    else :
+        model = AutoModelForCausalLM.from_pretrained(
+            DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+            device_map=device_map,
+            trust_remote_code=True,
+            resume_download=True,
+        ).eval()
 
     model.generation_config = GenerationConfig.from_pretrained(
-        args.checkpoint_path,
+        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
         trust_remote_code=True,
         resume_download=True,
     )

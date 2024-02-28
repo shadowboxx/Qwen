@@ -3,7 +3,7 @@ export CUDA_DEVICE_MAX_CONNECTIONS=1
 DIR="finetune/calf8414"
 DATE=$(date +%Y%m%d)
 
-MODEL="/mnt/d/LLM/models/Qwen/Qwen1.5-7B-Chat" # Set the path if you do not want to load from huggingface directly
+MODEL="/mnt/d/LLM/models/Qwen/Qwen1.5-14B-Chat-GPTQ-Int4" # Set the path if you do not want to load from huggingface directly
 # ATTENTION: specify the path to your training data, which should be a json file consisting of a list of conversations.
 # See the section for finetuning in README for more information.
 

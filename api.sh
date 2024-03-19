@@ -1,1 +1,1 @@
-python3 openai_api.py --checkpoint-path finetune/calf8414/output-20240216
+python3 openai_api.py --server-name 0.0.0.0 --checkpoint-path train/calf8414/output-lora-20240315

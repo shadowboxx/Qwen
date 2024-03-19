@@ -25,6 +25,9 @@ from starlette.responses import Response
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from transformers.generation import GenerationConfig
 
+import os
+from peft import AutoPeftModelForCausalLM
+
 
 def _gc(forced: bool = False):
     global args
@@ -537,16 +540,6 @@ def _get_args():
         'Demo server name. Default: 127.0.0.1, which is only visible from the local computer.'
         ' If you want other computers to access your server, use 0.0.0.0 instead.',
     )
-    parser.add_argument(
-        "--server-port", type=int, default=8000, help="Demo server port."
-    )
-    parser.add_argument(
-        "--server-name",
-        type=str,
-        default="127.0.0.1",
-        help="Demo server name. Default: 127.0.0.1, which is only visible from the local computer."
-        " If you want other computers to access your server, use 0.0.0.0 instead.",
-    )
     parser.add_argument("--disable-gc", action="store_true",
                         help="Disable GC after each response generated.")
 
@@ -554,45 +547,42 @@ def _get_args():
     return args
 
 
-DEFAULT_BASE_MODEL_PATH = "/mnt/d/LLM/models/Qwen-14B-Chat-Int4"
+DEFAULT_BASE_MODEL_PATH = "/mnt/d/LLM/models/Qwen/Qwen-14B-Chat-Int4"
 
 if __name__ == '__main__':
     args = _get_args()
-
-    tokenizer = AutoTokenizer.from_pretrained(
-        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
-        trust_remote_code=True,
-        resume_download=True,
-    )
 
     if args.api_auth:
         app.add_middleware(BasicAuthMiddleware,
                            username=args.api_auth.split(':')[0],
                            password=args.api_auth.split(':')[1])
-
+        
     if args.cpu_only:
         device_map = 'cpu'
     else:
         device_map = 'auto'
 
-    # 加载微调模型
-    if args.checkpoint_path : 
+    model_dir = args.checkpoint_path
+    if os.path.exists(os.path.join(model_dir, 'adapter_config.json')):
+        print('加载微调模型：'+model_dir)
         model = AutoPeftModelForCausalLM.from_pretrained(
-            args.checkpoint_path, # path to the output directory
-            device_map=device_map,
-            trust_remote_code=True
-        ).eval()
-    # 加载基础模型
-    else :
+            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
+        ) #.half().cuda()
+        tokenizer_dir = model.peft_config['default'].base_model_name_or_path
+    else:
+        print('加载基础模型：'+model_dir)
         model = AutoModelForCausalLM.from_pretrained(
-            DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
-            device_map=device_map,
-            trust_remote_code=True,
-            resume_download=True,
-        ).eval()
+            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
+        )
+        tokenizer_dir = model_dir
+
+    print('加载分词器：'+tokenizer_dir)
+    tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer_dir, trust_remote_code=True, use_cache=True
+    )
 
     model.generation_config = GenerationConfig.from_pretrained(
-        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+        args.checkpoint_path,
         trust_remote_code=True,
         resume_download=True,
     )

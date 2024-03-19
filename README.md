@@ -1178,6 +1178,9 @@ If you suffer from lack of GPU memory and you would like to run the model on mor
 
 However, though this method is simple, the efficiency of the native pipeline parallelism is low. We advise you to use vLLM with FastChat and please read the section for deployment.
 
+### x86 Platforms
+When deploy on Core™/Xeon® Scalable Processors or with Arc™ GPU, [OpenVINO™ Toolkit](https://docs.openvino.ai/2023.3/gen_ai_guide.html) is recommended. You can install and run this [example notebook](https://github.com/openvinotoolkit/openvino_notebooks/tree/main/notebooks/254-llm-chatbot). For related issues, you are welcome to file an issue at [OpenVINO repo](https://github.com/openvinotoolkit/openvino_notebooks/issues). 
+
 ### DashScope
 The most simple way to use Qwen through APIs is DashScope API service through Alibaba Cloud. We give an introduction to the usage. Additionally, we provide a script for you to deploy an OpenAI-style API on your own servers.
 
@@ -1444,7 +1447,7 @@ We also measure the inference speed and GPU memory usage with different settings
 ### Usage
 Now we provide the official training script, `finetune.py`, for users to finetune the pretrained model for downstream applications in a simple fashion. Additionally, we provide shell scripts to launch finetuning with no worries. This script supports the training with [DeepSpeed](https://github.com/microsoft/DeepSpeed) and [FSDP](https://engineering.fb.com/2021/07/15/open-source/fsdp/). The shell scripts that we provide use DeepSpeed (Note: this may have conflicts with the latest version of pydantic and you should use make sure `pydantic<2.0`) and Peft. You can install them by:
 ```bash
-pip install peft deepspeed
+pip install "peft<0.8.0" deepspeed
 ```
 
 To prepare your training data, you need to put all the samples into a list and save it to a json file. Each sample is a dictionary consisting of an id and a list for conversation. Below is a simple example list with 1 sample:
@@ -1713,18 +1716,13 @@ The statistics are listed below:
 
 For deployment and fast inference, we suggest using vLLM. 
 
-If you use cuda 12.1 and pytorch 2.1, you can directly use the following command to install vLLM.
+If you use **CUDA 12.1 and PyTorch 2.1**, you can directly use the following command to install vLLM.
 
 ```bash
-# pip install vllm  # This line is faster but it does not support quantization models.
-
-# The below lines support int4 quantization (int8 will be supported soon). The installation are slower (~10 minutes).
-git clone https://github.com/QwenLM/vllm-gptq
-cd vllm-gptq
-pip install -e .
+pip install vllm
 ```
 
-Otherwise, please refer to the official vLLM [Installation Instructions](https://docs.vllm.ai/en/latest/getting_started/installation.html), or our [vLLM repo for GPTQ quantization](https://github.com/QwenLM/vllm-gptq).
+Otherwise, please refer to the official vLLM [Installation Instructions](https://docs.vllm.ai/en/latest/getting_started/installation.html).
 
 #### vLLM + Transformer-like Wrapper
 

@@ -1159,6 +1159,10 @@ model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-7B-Chat", device_map="cp
 
 尽管这个方法很简单，但它的效率相对较低。我们建议使用vLLM和FastChat并请阅读部署章节。
 
+### x86 平台
+在 酷睿™/至强® 可扩展处理器或 Arc™ GPU 上部署量化模型时，建议使用 [OpenVINO™ Toolkit](https://docs.openvino.ai/2023.3/gen_ai_guide.html) 以充分利用硬件，实现更好的推理性能。您可以安装并运行此[example notebook](https://github.com/openvinotoolkit/openvino_notebooks/tree/main/notebooks/254-llm-chatbot)。相关问题，您可在 [OpenVINO repo](https://github.com/openvinotoolkit/openvino_notebooks/issues)中提交。
+
+
 ### 阿里云灵积（DashScope）API服务
 最简单的使用Qwen模型API服务的方法就是通过DashScope（阿里云灵积API模型服务）。我们提供了简单介绍说明使用方法。同时，我们还提供了自己部署OpenAI格式的API的方法。
 
@@ -1423,7 +1427,7 @@ model = AutoModelForCausalLM.from_pretrained(
 ### 使用方法
 我们提供了`finetune.py`这个脚本供用户实现在自己的数据上进行微调的功能，以接入下游任务。此外，我们还提供了shell脚本减少用户的工作量。这个脚本支持 [DeepSpeed](https://github.com/microsoft/DeepSpeed) 和 [FSDP](https://engineering.fb.com/2021/07/15/open-source/fsdp/) 。我们提供的shell脚本使用了DeepSpeed，因此建议您确保已经安装DeepSpeed和Peft（注意：DeepSpeed可能不兼容最新的pydantic版本，请确保`pydantic<2.0`）。你可以使用如下命令安装：
 ```bash
-pip install peft deepspeed
+pip install "peft<0.8.0" deepspeed
 ```
 
 首先，你需要准备你的训练数据。你需要将所有样本放到一个列表中并存入json文件中。每个样本对应一个字典，包含id和conversation，其中后者为一个列表。示例如下所示：
@@ -1691,18 +1695,13 @@ print(response)
 ### vLLM
 如希望部署及加速推理，我们建议你使用vLLM。
 
-如果你使用cuda12.1和pytorch2.1，可以直接使用以下命令安装vLLM。
+如果你使用**CUDA 12.1和PyTorch 2.1**，可以直接使用以下命令安装vLLM。
 
 ```bash
-# pip install vllm  # 该方法安装较快，但官方版本不支持量化模型
-
-# 下面方法支持int4量化 (int8量化模型支持将近期更新)，但安装更慢 (约~10分钟)。
-git clone https://github.com/QwenLM/vllm-gptq
-cd vllm-gptq
-pip install -e .
+pip install vllm
 ```
 
-否则请参考vLLM官方的[安装说明](https://docs.vllm.ai/en/latest/getting_started/installation.html)，或者安装我们[vLLM分支仓库](https://github.com/QwenLM/vllm-gptq)。
+否则请参考vLLM官方的[安装说明](https://docs.vllm.ai/en/latest/getting_started/installation.html)。
 
 #### vLLM + 类Transformer接口
 

@@ -1,7 +1,2 @@
-<<<<<<< HEAD
-gradio
-mdtex2html
-=======
 gradio<3.42
 mdtex2html
->>>>>>> 3885918ab1c2d5694674bba70c1199b256a9b86b

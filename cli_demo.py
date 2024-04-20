@@ -18,7 +18,7 @@ from transformers.trainer_utils import set_seed
 
 from peft import PeftModel, AutoPeftModelForCausalLM  # 微调模型模块
 
-DEFAULT_BASE_MODEL_PATH = '/mnt/d/LLM/models/Qwen-14B-Chat-Int4'
+DEFAULT_PEFT_CKPT_PATH = '/mnt/d/LLM/models/Qwen-14B-Chat-Int4'
 
 _WELCOME_MSG = '''\
 Welcome to use Qwen-Chat model, type text to start chat, type :h to show command help.
@@ -44,34 +44,55 @@ Commands:
 
 
 def _load_model_tokenizer(args):
+    model_dir = args.checkpoint_path
+
+    if os.path.exists(os.path.join(model_dir, 'adapter_config.json')):
+        print('加载微调模型：'+model_dir)
+        model = AutoPeftModelForCausalLM.from_pretrained(
+            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
+        )
+        tokenizer_dir = model.peft_config['default'].base_model_name_or_path
+    else:
+        print('加载基础模型：'+model_dir)
+        model = AutoModelForCausalLM.from_pretrained(
+            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
+        )
+        tokenizer_dir = model_dir
+
     tokenizer = AutoTokenizer.from_pretrained(
-        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+        tokenizer_dir,
         trust_remote_code=True, 
         resume_download=True,
     )
 
-    if args.cpu_only:
-        device_map = "cpu"
-    else:
-        device_map = "auto"
+    # tokenizer = AutoTokenizer.from_pretrained(
+    #     args.checkpoint_path,
+    #     trust_remote_code=True, 
+    #     resume_download=True,
+    # )
 
-    if args.checkpoint_path : 
-        model = AutoPeftModelForCausalLM.from_pretrained(
-            args.checkpoint_path, # path to the output directory
-            device_map=device_map,
-            trust_remote_code=True
-        ).eval()
+    # if args.cpu_only:
+    #     device_map = "cpu"
+    # else:
+    #     device_map = "auto"
 
-    else :
-        model = AutoModelForCausalLM.from_pretrained(
-            DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
-            device_map=device_map,
-            trust_remote_code=True,
-            resume_download=True,
-        ).eval()
+    # if args.checkpoint_path : 
+    #     model = AutoPeftModelForCausalLM.from_pretrained(
+    #         args.checkpoint_path, # path to the output directory
+    #         device_map=device_map,
+    #         trust_remote_code=True
+    #     ).eval()
+
+    # else :
+    #     model = AutoModelForCausalLM.from_pretrained(
+    #         args.checkpoint_path,
+    #         device_map=device_map,
+    #         trust_remote_code=True,
+    #         resume_download=True,
+    #     ).eval()
 
     config = GenerationConfig.from_pretrained(
-        DEFAULT_BASE_MODEL_PATH, #args.checkpoint_path,
+        args.checkpoint_path,
         trust_remote_code=True,
          resume_download=True,
     )
@@ -119,7 +140,7 @@ def _get_input() -> str:
 def main():
     parser = argparse.ArgumentParser(
         description='QWen-Chat command-line interactive chat demo.')
-    parser.add_argument("-c", "--checkpoint-path", type=str, # default=DEFAULT_PEFT_CKPT_PATH,
+    parser.add_argument("-c", "--checkpoint-path", type=str, default=DEFAULT_PEFT_CKPT_PATH,
                         help="Checkpoint name or path, default to %(default)r")
     parser.add_argument("-s", "--seed", type=int, default=1234, help="Random seed")
     parser.add_argument("--cpu-only", action="store_true", help="Run demo with CPU only")

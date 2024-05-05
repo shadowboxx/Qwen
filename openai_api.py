@@ -29,6 +29,27 @@ import os
 from peft import AutoPeftModelForCausalLM
 
 
+class BasicAuthMiddleware(BaseHTTPMiddleware):
+
+    def __init__(self, app, username: str, password: str):
+        super().__init__(app)
+        self.required_credentials = base64.b64encode(
+            f'{username}:{password}'.encode()).decode()
+
+    async def dispatch(self, request: Request, call_next):
+        authorization: str = request.headers.get('Authorization')
+        if authorization:
+            try:
+                schema, credentials = authorization.split()
+                if credentials == self.required_credentials:
+                    return await call_next(request)
+            except ValueError:
+                pass
+
+        headers = {'WWW-Authenticate': 'Basic'}
+        return Response(status_code=401, headers=headers)
+
+
 def _gc(forced: bool = False):
     global args
     if args.disable_gc and not forced:
@@ -521,8 +542,8 @@ def _get_args():
         '-c',
         '--checkpoint-path',
         type=str,
-        default="Qwen/Qwen-7B-Chat",
-        help="Checkpoint name or path, default to %(default)r",
+        default='Qwen/Qwen-7B-Chat',
+        help='Checkpoint name or path, default to %(default)r',
     )
     parser.add_argument('--api-auth', help='API authentication credentials')
     parser.add_argument('--cpu-only',
@@ -540,14 +561,36 @@ def _get_args():
         'Demo server name. Default: 127.0.0.1, which is only visible from the local computer.'
         ' If you want other computers to access your server, use 0.0.0.0 instead.',
     )
-    parser.add_argument("--disable-gc", action="store_true",
-                        help="Disable GC after each response generated.")
+    parser.add_argument(
+        '--disable-gc',
+        action='store_true',
+        help='Disable GC after each response generated.',
+    )
 
     args = parser.parse_args()
     return args
 
 
 DEFAULT_BASE_MODEL_PATH = "/mnt/d/LLM/models/Qwen/Qwen-14B-Chat-Int4"
+
+# Qwen 1.5 没有chat方法
+def chat(model, tok, ques, history=[], **kw):
+    iids = tok.apply_chat_template(
+		history + [{'role': 'user', 'content': ques}], 
+		add_generation_prompt=1,)
+    oids = model.generate(
+		inputs=torch.tensor([iids]).to(model.device),
+		**(model.generation_config.to_dict() | kw)
+        )
+    oids = oids[0][len(iids):].tolist()
+    if oids[-1] == tok.eos_token_id:
+        oids = oids[:-1]    
+    ans = tok.decode(oids)
+	
+    return ans
+
+#model.chat = chat
+
 
 if __name__ == '__main__':
     args = _get_args()
@@ -560,20 +603,20 @@ if __name__ == '__main__':
     if args.cpu_only:
         device_map = 'cpu'
     else:
-        device_map = 'auto'
+        device_map = 'cuda'
 
     model_dir = args.checkpoint_path
     if os.path.exists(os.path.join(model_dir, 'adapter_config.json')):
         print('加载微调模型：'+model_dir)
         model = AutoPeftModelForCausalLM.from_pretrained(
-            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
+            model_dir, trust_remote_code=True, device_map=device_map, use_cache=True
         ) #.half().cuda()
         tokenizer_dir = model.peft_config['default'].base_model_name_or_path
     else:
         print('加载基础模型：'+model_dir)
         model = AutoModelForCausalLM.from_pretrained(
-            model_dir, trust_remote_code=True, device_map='cuda', use_cache=True
-        )
+            model_dir, trust_remote_code=True, device_map=device_map, use_cache=True
+        )   
         tokenizer_dir = model_dir
 
     print('加载分词器：'+tokenizer_dir)
@@ -581,10 +624,10 @@ if __name__ == '__main__':
         tokenizer_dir, trust_remote_code=True, use_cache=True
     )
 
-    model.generation_config = GenerationConfig.from_pretrained(
-        args.checkpoint_path,
-        trust_remote_code=True,
-        resume_download=True,
-    )
+    # model.generation_config = GenerationConfig.from_pretrained(
+    #     args.checkpoint_path,
+    #     trust_remote_code=True,
+    #     resume_download=True,
+    # )
 
     uvicorn.run(app, host=args.server_name, port=args.server_port, workers=1)
